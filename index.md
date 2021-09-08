@@ -64,9 +64,16 @@ Here are some other images from the collection.
 
 
 
+
+
+
+**----------------------------------------------------------------------------------------------------------**
+
+
 **Bells and Whistles**
 
-Many of these images had to have their base color selected in order to get best allignment. The reason for this is that if one plate has a very saturated color, then that one plate will have a strongly defined color in one region, while the other two plates may not have that much defined color in that region, breaking the assumption that all colors tend to have similar values in all regions of the image. Since this was the fundamental assumption in the ssd scoring, when our base is saturated, we can see this break. In the picture with the emir, blue and red are highly saturated with the robe having saturated blues and reds. Below are two photos: one with blue base and another with red base. Green is the only plate that aligns well in this photo.
+**Better Alignment with Color Gradients**
+Many of these images had to have their base color selected in order to get best alignment. The reason for this is that if one plate has a very saturated color, then that one plate will have a strongly defined color in one region, while the other two plates may not have that much defined color in that region, breaking the assumption that all colors tend to have similar values in all regions of the image. Since this was the fundamental assumption in the ssd scoring, when our base is saturated, we can see this break. In the picture with the emir, blue and red are highly saturated with the robe having saturated blues and reds. Below are two photos: one with blue base and another with red base. Green is the only plate that aligns well in this photo.
 
 Blue Base:
 ![blue_base_image](./blue_base.jpg "blue_base")
@@ -77,3 +84,21 @@ Red Base (There is some yellow smearing that is visible near the edge of his hea
 Since this assumption about the lack of color saturation in images is clearly being violated, we need to come up with a better method. The simple answer is that we should first process the image by absolute value of color gradients. Since the color isn't 100% saturated, in all color channels there is some boundary at the edge of his robe, around his head, around the depictions on his robe, etc, we should try and line up these edges if anything. So I implemented an image processing step that takes our r, g, b images and processes them, adding the absolute value of x, y, and xy Sobel filter edges, then rescaling so that we clip between 0 and a few standard deviations of the mean. The output image aligns well on every image that I have tested it on so far, and works for all settings of the base color.
 
 ![edge_filter_blue_base_image](./edge_filter_blue_base.jpg "edge_filter_blue_base")
+
+
+**Auto White Balance**
+I wanted to try and get some better colors with auto white balance since some of the images look a little bit nicer. Turns out, the contrast was already pretty good on these images and white balancing didn't do all that much. I did what was discussed for auto-white-balancing in lecture, where you just set the ith brightest red color pixel to be i/num_pixels, and so on for all color channels. The results were very underwhelming. I tried to see a difference, and the only place where I could find a visible difference (because np was telling me that the images weren't np.isclose for most entries) was in the sky for the church.tif image.
+
+No awb:
+![no_awb_image](./no_awb.jpg "no_awb")
+
+With awb:
+![awb_image](./awb.jpg "awb")
+
+To my eyes, the sky seems to be visibly more lifelike and bright blue, whereas without awb, the sky seems to be a blue... more towards ocean blue. Here are some closeups to help you decide if I'm crazy or not.
+
+No awb:
+![no_awb_close_image](./no_awb_close.jpg "no_awb_close")
+
+With awb:
+![awb_close_image](./awb_close.jpg "awb_close")
