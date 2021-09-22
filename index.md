@@ -1,104 +1,143 @@
-# Project 1
+# Project 2
 
-In this project, we are working with negatives created by Sergei Mikhailovich Prokudin-Gorskii, a man who received the Tzar's backing to capture color photos of the Russian Empire. To do this, he shot photographs with red, green, and blue filters... plates which reside with the Library of Congress, where we can reconstruct the photos he took with color, just as he imagined it.
+In this project, we are investigating the intersection between images and the frequency domain. We are primarily interested in how we can use our understanding of images as compositions of an infinite basis of frequencies to our advantage in a variety of image augmenting and composing tasks.
 
-We want to take these photos and reproduce them in color by aligning the 3 separate images, printing the resulting image from the aligned color channels. In order to decide which offset of the plates will work the best, we need to implement a variety of search methods.
+**Finite Difference Operator**
 
-**Exhaustive Search**
-We can first brute-force the problem by taking one plate as a base, taking each of the two remaining plates, and individually searching every configuration within some range to see where it best lines up with the base plate.
+Here, we are interested in looking at edges. We will take the derivative convolutions over our images and look at the magnitude of the gradient.
 
-**Pyramid Search**
-Since it can be computationally intensive to use exhaustive search for very high resolution images, we need a better way. Instead of trying to line up the full resolution images right away, pyramid search exhaustively searches lower resolution versions of the image first to get an estimate of where our 2 plates line up with our chosen base plate. We then slowly scale this up to the higher resolution version of the image, searching in the neighborhood of our previous estimate, refining the estimate at higher resolutions as we go along, until we finish the final exhaustive search at the highest resolution in the neighborhood of our lower resolution estimate.
-The reason that this works so well is that ultimately, on the top level we will be searching using the exhaustive search to get the correct answer (assuming our lower resolution estimates are at least somewhat accurate), but by searching wider areas at lower resolutions (where things are computationally less expensive) we can estimate where the final answer will be and search a smaller area at higher resolutions.
+Here we can see the basic cameraman image that we are going to be modifying.
+![1_1_1](./1_1_1.png "Basic Cameraman Image")
 
-**Alignment Scores**
-In order to decide where the best fit is, we need to have some metric for how aligned the two images are. The basic way is to use a sum of squared differences between all elements in the overlapping color plates, with the intuition that generally, each color channel tends to grow lighter or darker together, so the most aligned image will have pixel values that are somewhat close together. This will work well enough until we start having to deal with very saturated colors, which will force us to choose our base color carefully, lest we chose the plate corresponding to the saturated color as our base, in which case the other two plates will have great difficulty matching to the base plate.
+Here we can see the dy and dy outputs from convolving over the input image. You can see how the dy image has more horizontal likes (vertical changes) and the opposite for dx.
 
-**Implementational Notes**
-Since the objective was for us to implement these from scratch as much as possible, instead of using padded convolutions to search through all matchings at once, I double for looped over our search area to do the brute forcing.
-Additionally, I chose to implement scores, so that when most aligned, the score will be **maximized** instead of minimized. For the sum of squared differences score, this translate to simply negating the scores, so that the one with minimal difference between pixels will be closest to zero, and the largest (since no score will be negative before we negate it).
-For my ssd score, due to the fact that I chose not to wrap or anything, I chose to normalize the score to account for the fact that larger offsets would have smaller overlaps.
+![1_1_2](./1_1_2.png "Basic Cameraman Image")
+![1_1_3](./1_1_3.png "Basic Cameraman Image")
 
-**Results**
-![cathedral_image](./cathedral.jpg "cathedral")
+Here we can see the magnitude of the gradient, which is just the square root of the squares of dx and dy (all elementwise). This image pretty much captures the edges of our person.
 
-![church_image](./church.jpg "church")
+![1_1_4](./1_1_4.png "Basic Cameraman Image")
 
-![emir_image](./emir.jpg "emir")
+Here we can see some different threshold values. I found that values between .15 and .20 seemed to do the best job getting rid of the noise, without getting rid of good information. Unfortunately, no matter what the threshold was, some background information was always lost, though I'd really hoped that the background buildings would stay. If only the background buildings were slightly darker in color, the gradients would have been large enough to cross the threshold.
 
-![harvesters_image](./harvesters.jpg "harvesters")
+![1_1_5](./1_1_5.png "Basic Cameraman Image")
 
-![icon_image](./icon.jpg "icon")
+**DoG Filter**
 
-![lady_image](./lady.jpg "lady")
+Here, we want to look at blurring before we take the derivative. The derivative is particularly unstable in this discrete setting, especially when we have noise like the grass. We need to try and get rid of some of that noise before we take the derivative in the hopes of capturing some real edges, and getting less noise.
 
-![melons_image](./melons.jpg "melons")
+Due to the nice properties of convolutions, we can even create a single filter per direction that is a composition of both derivative and gaussian filters.
 
-![monastery_image](./monastery.jpg "monastery")
+Here is the cameraman blurred before the derivative. We can see that it looks pretty similar... just slightly blurrier. Go figure right? A slightly heavier blur might get rid of a little more noise in the grass, but we would risk also smearing our real edges too much.
 
-![onion_church_image](./onion_church.jpg "onion_church")
+![1_2_1](./1_2_1.png "Basic Cameraman Image")
 
-![self_portrait_image](./self_portrait.jpg "self_portrait")
+Here we can see the magnitude of the gradients. The edges here look pretty good overall. Generally, the lines look smoother (probably just because they are bolded and easier to see for human eyes) and perhaps a little brighter relative to the noise in the grass.  
 
-![three_generations_image](./three_generations.jpg "three_generations")
+![1_2_2](./1_2_2.png "Basic Cameraman Image")
 
-![tobolsk_image](./tobolsk.jpg "tobolsk")
+Here we can do the thresholding again. Notice that the threshold values are significantly smaller than when we took the magnitude of the gradient without blurring first. In my opinion, .05 is the best threshold, since we still have some edges from the tall building in the background, and there is a steep drop off of noise in the grass between .04 and .05.
 
-![train_image](./train.jpg "train")
+![1_2_3](./1_2_3.png "Basic Cameraman Image")
 
-![workshop_image](./workshop.jpg "workshop")
+Below are all the tests ran again with the derivative of gaussian filter applied all at once through a single convolution operation with our specialized filter. You can see that everything looks the same. I chose to use a large filter size for the gaussian and also chose to have the gaussian filter size be even. This is because with same padding, odd sized gaussians would have strange edge behavior due the fact that we would use the padded zeros on one side, but not the other (remember, the derivative filter is 1x2). With an odd sized gaussian, with same padding, we use one zero at the edge on both sides for the direction of the derivative. This means that the filter is symmetrical, which is what we want.
 
+![1_2_4](./1_2_4.png "Basic Cameraman Image")
+![1_2_5](./1_2_5.png "Basic Cameraman Image")
 
-**Other Images in the Collection**
-Here are some other images from the collection.
+**Image Sharpening**
 
-![other1_image](./other1.jpg "other1")
+Here is our control.
 
-![other2_image](./other2.jpg "other2")
+![2_1_1](./2_1_1.png "Basic Cameraman Image")
 
-![other3_image](./other3.jpg "other3")
+Here is a slightly sharper image. You can see that the lines around the hair, coat edge, and especially in the camera itself are much more pronounced. Unfortunately, the noise in the grass is too.
 
-![other4_image](./other4.jpg "other4")
+![2_1_2](./2_1_2.png "Basic Cameraman Image")
 
-![other5_image](./other5.jpg "other5")
+Here is a test to make sure my implementation with a single convolution operation all at once works in the same way. You can see that the images are identical.
 
+![2_1_3](./2_1_3.png "Basic Cameraman Image")
 
+The results are pretty good. Colors aren't unbalanced or anything, and background/blurry features come more into view, and edges get sharper in general even for already sharp features. I suspect though that if I had a larger screen to view these images on, I would find the result less appealing since the sharpening would definitely make smaller features come more into view, distracting me from the primary object in the images.
+In general, I didn't want to set the alpha value too high, so the difference is subtle, but it is there. The Taj Mahal has brighter scaffolding, the surfboard has sharper fins, the trees tend to have sharper more defined leaves, the blades of grass are more visible, and shingles are more visible.
 
+![2_1_4](./2_1_4.png "Basic Cameraman Image")
+![2_1_5](./2_1_5.png "Basic Cameraman Image")
+![2_1_6](./2_1_6.png "Basic Cameraman Image")
+![2_1_7](./2_1_7.png "Basic Cameraman Image")
+![2_1_8](./2_1_8.png "Basic Cameraman Image")
 
+**Hybrid Images**
 
+Here, we are merging the frequency domains of two different images by simply adding two processed images, one with high pass and one with low pass. It certainly isn't perfect, but it does work here. You can see the cat up close, but back away and the human is clearly there.
 
-**----------------------------------------------------------------------------------------------------------**
+![2_2_1](./2_2_1.png "Basic Cameraman Image")
 
+Here we can see the process of creating these. Here is the final product of a cybertruck that wished to be a real pickup:
 
-**Bells and Whistles**
+![2_2_2](./2_2_2.png "Basic Cameraman Image")
 
-**Better Alignment with Color Gradients**
-Many of these images had to have their base color selected in order to get best alignment. The reason for this is that if one plate has a very saturated color, then that one plate will have a strongly defined color in one region, while the other two plates may not have that much defined color in that region, breaking the assumption that all colors tend to have similar values in all regions of the image. Since this was the fundamental assumption in the ssd scoring, when our base is saturated, we can see this break. In the picture with the emir, blue and red are highly saturated with the robe having saturated blues and reds. Below are two photos: one with blue base and another with red base. Green is the only plate that aligns well in this photo.
+Here is the gaussian filter's small frequency domain.
 
-Blue Base:
-![blue_base_image](./blue_base.jpg "blue_base")
-
-Red Base (There is some yellow smearing that is visible near the edge of his head):
-![red_base_image](./red_base.jpg "red_base")
-
-Since this assumption about the lack of color saturation in images is clearly being violated, we need to come up with a better method. The simple answer is that we should first process the image by absolute value of color gradients. Since the color isn't 100% saturated, in all color channels there is some boundary at the edge of his robe, around his head, around the depictions on his robe, etc, we should try and line up these edges if anything. So I implemented an image processing step that takes our r, g, b images and processes them, adding the absolute value of x, y, and xy Sobel filter edges, then rescaling so that we clip between 0 and a few standard deviations of the mean. The output image aligns well on every image that I have tested it on so far, and works for all settings of the base color.
-
-![edge_filter_blue_base_image](./edge_filter_blue_base.jpg "edge_filter_blue_base")
+![2_2_3](./2_2_3.png "Basic Cameraman Image")
+![2_2_4](./2_2_4.png "Basic Cameraman Image")
 
 
-**Auto White Balance**
-I wanted to try and get some better colors with auto white balance since some of the images look a little bit nicer. Turns out, the contrast was already pretty good on these images and white balancing didn't do all that much. I did what was discussed for auto-white-balancing in lecture, where you just set the ith brightest red color pixel to be i/num_pixels, and so on for all color channels. The results were very underwhelming. I tried to see a difference, and the only place where I could find a visible difference (because np was telling me that the images weren't np.isclose for most entries) was in the sky for the church.tif image.
+Here we can see the images and frequency domains of original images and images with a pass on them. The high pass filter gets rid of just the tiny center since we can see our frequency domain gaussian is tiny. In the low pass however, we only really keep the center (and the bars in frequency domain are so large that they are inevitable since our image alignment leaves massive vertical and horizontal lines on the border of the actual image).
 
-No awb:
-![no_awb_image](./no_awb.jpg "no_awb")
+![2_2_5](./2_2_5.png "Basic Cameraman Image")
 
-With awb:
-![awb_image](./awb.jpg "awb")
+Here are some more hybrids
 
-To my eyes, the sky seems to be visibly more lifelike and bright blue, whereas without awb, the sky seems to be a blue... more towards ocean blue. Here are some closeups to help you decide if I'm crazy or not.
+![2_2_6](./2_2_6.png "Basic Cameraman Image")
+![2_2_7](./2_2_7.png "Basic Cameraman Image")
 
-No awb:
-![no_awb_close_image](./no_awb_close.jpg "no_awb_close")
+Bells and Whistles:
+Here, I tried to combine color with the hybridization of our man/cat thing. I knew that we would need some color from both or it would look really strange with only cat fur or human skin tone, the question was just how much. I think I found a good balance where we did just mostly cat since the cat color is really dark and will blend in the the edges/borders in our image from afar when you see the human.
 
-With awb:
-![awb_close_image](./awb_close.jpg "awb_close")
+![2_2_8](./2_2_8.png "Basic Cameraman Image")
+
+**Gaussian Stack**
+
+Here, we are successively blurring more and more without downscaling to create our gaussian stack.
+
+![2_3_1](./2_3_1.png "Basic Cameraman Image")
+
+Here we can see the laplacian stack which is just the gaussian stack where each element in the gaussian stack is subtracted from the next element in the original gaussian stack.
+
+![2_3_2](./2_3_2.png "Basic Cameraman Image")
+
+Here we can see a boosted laplacian stack (minus layers 1/3) which mimics the image in the paper. You can see the dimples on the orange in layer 0 where there is most detail, and the base colors at the bottom where its blurriest.
+
+![2_3_3](./2_3_3.png "Basic Cameraman Image")
+
+
+**Multiscale Images**
+
+Here, we will blur a mask and then use that to weight the laplace pyramids of two images, adding them back together.
+
+Here is the mask
+
+![2_4_1](./2_4_1.png "Basic Cameraman Image")
+
+Here is the full thing
+
+![2_4_2](./2_4_2.png "Basic Cameraman Image")
+
+Here are some more images that I really like, blurred with my favorite image of all, the surfer in the sky!
+
+![2_4_3](./2_4_3.png "Basic Cameraman Image")
+
+Here is the process of creating another surfer in the sky of another image.
+
+![2_4_4](./2_4_4.png "Basic Cameraman Image")
+![2_4_5](./2_4_5.png "Basic Cameraman Image")
+
+Here, I really turned up the blurring on the mask to make sure it fit nicely
+
+![2_4_6](./2_4_6.png "Basic Cameraman Image")
+
+Here are the pyramids of both Images
+![2_4_7](./2_4_7.png "Basic Cameraman Image")
+![2_4_8](./2_4_8.png "Basic Cameraman Image")
